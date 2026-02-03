@@ -1,0 +1,67 @@
+# Ralph-Lite Configuration
+# Autonomous build system with human checkpoints
+
+# Budget constraints
+max_daily_cost: 5.00
+max_iterations: 10
+avg_cost_per_iteration: 0.50
+
+# Timing
+timeout_minutes: 30  # Human response timeout
+poll_interval_seconds: 5  # Telegram polling interval
+
+# Paths
+build_directory: "~/albatross-builds"
+vault_path: "~/albatross-vault/06-Lessons"
+cost_log_path: "~/albatross/config/token_costs.json"
+
+# Phase settings
+phases:
+  interview:
+    max_questions: 5
+    follow_up_enabled: false  # MVP: no follow-ups
+
+  planning:
+    max_revisions: 3
+    auto_approve: false  # Always require human approval
+
+  build:
+    auto_continue: false  # Always stop for approval
+    checkpoint_every: 1   # Stop every N iterations
+    rollback_enabled: true
+    tests_must_pass: false  # MVP: don't block on tests
+
+  done:
+    auto_finalize: false  # Human confirms completion
+
+# Telegram settings
+telegram:
+  notification_level: "verbose"  # verbose|summary|minimal
+  include_code_previews: true
+  max_preview_lines: 20
+  confirm_commands: true  # Ask "Did you mean...?"
+
+# Logging
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "~/albatross/logs/ralph_lite.log"
+
+# LLM Configuration (OpenCode Zen)
+llm:
+  provider: opencode_zen
+  api_key: ${OPENCODE_ZEN_API_KEY}
+  models:
+    default: kimi-k2.5      # FREE TIER - Use for all tasks during MVP
+    complex: kimi-k2.5      # ALSO FREE - Switch to claude-sonnet-4.5 later if needed
+    fallback: claude-sonnet-4.5  # Only for outages or complex edge cases
+  cost_limits:
+    daily_max: 5.00         # Safety net, but expect $0/day with Kimi
+    warning_at: 1.00        # Alert at $1 (rare with free tier)
+
+# Security
+security:
+  sandbox_builds: true
+  no_auto_deploy: true
+  require_approval: true
+  max_retry_attempts: 3
