@@ -47,6 +47,18 @@ logging:
   format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
   file: "~/albatross/logs/ralph_lite.log"
 
+# LLM Configuration (OpenCode Zen)
+llm:
+  provider: opencode_zen
+  api_key: ${OPENCODE_ZEN_API_KEY}
+  models:
+    default: kimi-k2.5      # FREE TIER - Use for all tasks during MVP
+    complex: kimi-k2.5      # ALSO FREE - Switch to claude-sonnet-4.5 later if needed
+    fallback: claude-sonnet-4.5  # Only for outages or complex edge cases
+  cost_limits:
+    daily_max: 5.00         # Safety net, but expect $0/day with Kimi
+    warning_at: 1.00        # Alert at $1 (rare with free tier)
+
 # Security
 security:
   sandbox_builds: true
