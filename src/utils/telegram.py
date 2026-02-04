@@ -31,10 +31,36 @@ BASE_URL = "https://api.telegram.org/bot{token}"
 SEND_MESSAGE_URL = BASE_URL + "/sendMessage"
 GET_UPDATES_URL = BASE_URL + "/getUpdates"
 
+# Track last message ID to avoid processing old messages
+_last_update_id = 0
+
+def _get_latest_update_id() -> int:
+    """Get the latest update ID from Telegram to establish baseline."""
+    global _last_update_id
+    if not TELEGRAM_BOT_TOKEN:
+        return 0
+    
+    try:
+        url = GET_UPDATES_URL.format(token=TELEGRAM_BOT_TOKEN)
+        response = requests.get(url, timeout=10)
+        data = response.json()
+        
+        if data.get('ok') and data.get('result'):
+            max_id = max((u.get('update_id', 0) for u in data['result']), default=0)
+            _last_update_id = max_id
+            logger.debug(f"Latest update ID: {_last_update_id}")
+    except Exception as e:
+        logger.warning(f"Could not get latest update ID: {e}")
+    
+    return _last_update_id
+
 # Validate credentials on module load
 if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
     logger.warning("Telegram credentials not configured!")
     logger.warning("Set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID environment variables")
+else:
+    # Initialize update ID on module load
+    _get_latest_update_id()
 
 
 def _make_request(url: str, data: dict = None, timeout: int = 10) -> dict:
@@ -192,6 +218,8 @@ def request_user_input(prompt: str, timeout_minutes: int = 30) -> str:
     Send prompt to user and BLOCK until response received.
     CRITICAL FUNCTION for Ralph-Lite orchestration.
     
+    Only processes messages received AFTER this function is called.
+    
     Args:
         prompt: Message to send (can be multi-line)
         timeout_minutes: Max time to wait (default 30)
@@ -202,31 +230,37 @@ def request_user_input(prompt: str, timeout_minutes: int = 30) -> str:
     Raises:
         TimeoutError: If no response within timeout
     """
+    global _last_update_id
+    
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         raise RuntimeError("Telegram credentials not configured!")
+    
+    # Get baseline update ID BEFORE sending prompt
+    # This ensures we only see messages sent AFTER the prompt
+    _get_latest_update_id()
+    baseline_update_id = _last_update_id
+    logger.debug(f"Baseline update ID: {baseline_update_id}")
     
     # Send the prompt
     if not send_message(prompt):
         raise RuntimeError("Failed to send prompt message")
     
     logger.info(f"Waiting for user response (timeout: {timeout_minutes} min)")
+    logger.info(f"Ignoring messages before update ID: {baseline_update_id}")
     
     # Record start time
     start_time = time.time()
     timeout_seconds = timeout_minutes * 60
-    
-    # Track last update ID to only get new messages
-    last_update_id = None
     
     # Polling loop
     poll_interval = 5  # seconds
     
     while time.time() - start_time < timeout_seconds:
         try:
-            # Get updates from Telegram
+            # Get updates from Telegram (only NEW messages)
             url = GET_UPDATES_URL.format(token=TELEGRAM_BOT_TOKEN)
-            if last_update_id:
-                url += f"?offset={last_update_id + 1}"
+            if _last_update_id > 0:
+                url += f"?offset={_last_update_id + 1}"
             
             response = requests.get(url, timeout=10)
             data = response.json()
@@ -240,7 +274,14 @@ def request_user_input(prompt: str, timeout_minutes: int = 30) -> str:
             
             for update in updates:
                 update_id = update.get('update_id')
-                last_update_id = max(last_update_id or 0, update_id)
+                
+                # Skip old messages (before our baseline)
+                if update_id <= baseline_update_id:
+                    logger.debug(f"Skipping old message (ID: {update_id})")
+                    continue
+                
+                # Update tracking
+                _last_update_id = max(_last_update_id, update_id)
                 
                 # Check if this is a message
                 message = update.get('message')
