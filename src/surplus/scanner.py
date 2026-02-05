@@ -399,35 +399,58 @@ class SurplusScanner:
 
         # Real Alberta Surplus URL structure
         base_url = "https://surplus.gov.ab.ca"
-        auction_url = f"{base_url}/OA/ItemsSearch.aspx"
 
-        print(f"Fetching items from: {auction_url}")
-        soup = self._fetch_page(auction_url)
-
-        if not soup:
-            print("Failed to fetch auction page")
-            return self.items
+        # Category IDs to scan (from config or defaults)
+        # 46=Audio Visual, 49=Electronics, 52=Lab Equipment, 55=Tools, 57=Office
+        categories = scanner_config.get('categories', [46, 49, 52, 55, 57])
+        category_names = {
+            46: "Audio Visual",
+            49: "Electronics",
+            52: "Lab Equipment",
+            55: "Tools & Shop",
+            57: "Office Equipment"
+        }
 
         items_found = 0
-
-        # Find auction item rows - they use table rows or specific divs
-        # Look for links to ItemDetail.aspx which contain auction items
-        item_links = soup.find_all('a', href=re.compile(r'ItemDetail\.aspx\?AuctionID=', re.I))
-
-        if not item_links:
-            # Try finding table rows with auction data
-            tables = soup.find_all('table')
-            for table in tables:
-                rows = table.find_all('tr')
-                for row in rows:
-                    link = row.find('a', href=re.compile(r'ItemDetail|AuctionID', re.I))
-                    if link:
-                        item_links.append(link)
-
-        print(f"Found {len(item_links)} item links on page")
-
         seen_ids = set()
-        for link in item_links:
+        all_item_links = []  # Store tuples of (link, category_id, category_name)
+
+        # Loop through each category
+        for category_id in categories:
+            category_name = category_names.get(category_id, f"Category {category_id}")
+            category_url = f"{base_url}/OA/ItemList.aspx?categoryID={category_id}"
+
+            print(f"\nFetching {category_name} (ID: {category_id})...")
+            print(f"  URL: {category_url}")
+
+            soup = self._fetch_page(category_url)
+
+            if not soup:
+                print(f"  Failed to fetch {category_name}")
+                continue
+
+            # Find auction item links on this category page
+            item_links = soup.find_all('a', href=re.compile(r'ItemDetail\.aspx\?AuctionID=', re.I))
+
+            if not item_links:
+                # Try finding table rows with auction data
+                tables = soup.find_all('table')
+                for table in tables:
+                    rows = table.find_all('tr')
+                    for row in rows:
+                        link = row.find('a', href=re.compile(r'ItemDetail|AuctionID', re.I))
+                        if link:
+                            item_links.append(link)
+
+            print(f"  Found {len(item_links)} items in {category_name}")
+
+            # Add to master list with category info
+            for link in item_links:
+                all_item_links.append((link, category_id, category_name))
+
+        print(f"\nTotal item links found across all categories: {len(all_item_links)}")
+
+        for link, category_id, category_name in all_item_links:
             if items_found >= max_items:
                 break
 
@@ -462,7 +485,7 @@ class SurplusScanner:
             condition = "Unknown"
             description = ""
             auction_end = datetime.now().isoformat()
-            category = "General"
+            category = category_name  # Use the category from the loop
 
             if detail_soup:
                 # Extract location - look for Calgary
@@ -493,7 +516,7 @@ class SurplusScanner:
                 title=title[:200],
                 description=description,
                 category=category,
-                category_id=0,
+                category_id=category_id,
                 condition=condition,
                 current_bid=current_bid,
                 min_bid=None,
