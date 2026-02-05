@@ -403,14 +403,32 @@ class SurplusScanner:
         # Category IDs to scan (from config or defaults)
         # 46=Audio Visual, 49=Electronics, 52=Lab Equipment, 55=Tools, 57=Office
         default_categories = [46, 49, 52, 55, 57]
-        categories = scanner_config.get('categories', default_categories)
+        raw_categories = scanner_config.get('categories', default_categories)
 
-        # Ensure categories is a list of integers (not dict or other)
-        if isinstance(categories, dict):
-            categories = list(categories.keys())
-        elif not isinstance(categories, list):
+        # Handle various config formats
+        categories = []
+        if isinstance(raw_categories, dict):
+            # Format: {46: "Audio Visual", 49: "Electronics"}
+            categories = list(raw_categories.keys())
+        elif isinstance(raw_categories, list):
+            for c in raw_categories:
+                if isinstance(c, dict):
+                    # Format: [{id: 46, name: "Audio Visual"}, ...]
+                    cat_id = c.get('id') or c.get('category_id') or c.get('categoryID')
+                    if cat_id is not None:
+                        categories.append(cat_id)
+                elif isinstance(c, (int, str)):
+                    # Format: [46, 49, 52] or ["46", "49"]
+                    categories.append(c)
+
+        # Convert to integers, fallback to defaults if empty
+        try:
+            categories = [int(c) for c in categories]
+        except (ValueError, TypeError):
             categories = default_categories
-        categories = [int(c) for c in categories if str(c).isdigit()]
+
+        if not categories:
+            categories = default_categories
         category_names = {
             46: "Audio Visual",
             49: "Electronics",
