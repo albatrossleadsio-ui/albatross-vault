@@ -244,7 +244,10 @@ Ready to find profitable flips!
             await update.message.reply_text(text, parse_mode='Markdown', reply_markup=keyboard)
 
         except Exception as e:
-            logger.error(f"Scanner error: {e}")
+            import traceback
+            tb = traceback.format_exc()
+            logger.error(f"Scanner error: {e}\n{tb}")
+            print(f"FULL TRACEBACK:\n{tb}")
             await update.message.reply_text(f"❌ Scan failed: {str(e)[:100]}")
 
     async def status_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
