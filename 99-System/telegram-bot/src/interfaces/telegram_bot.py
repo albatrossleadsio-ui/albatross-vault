@@ -175,7 +175,7 @@ Ready to find profitable flips!
             from src.surplus.calculator import ROICalculator
 
             scanner = SurplusScanner()
-            items = scanner.scan(test_mode=True)  # Use test_mode for safety
+            items = scanner.scan(test_mode=False)  # Live data from surplus website
 
             if not items:
                 await update.message.reply_text("No items found in Calgary area.")
@@ -183,7 +183,7 @@ Ready to find profitable flips!
 
             # Research items
             researcher = ApifyEbayResearcher()
-            research_data = researcher.research_batch(items, test_mode=True)
+            research_data = researcher.research_batch(items, test_mode=False)
 
             # Calculate ROI
             calculator = ROICalculator()
