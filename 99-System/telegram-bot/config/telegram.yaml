@@ -1,0 +1,161 @@
+# Albatross Telegram Bot Configuration
+# Mobile interface for surplus arbitrage system
+
+# Telegram Credentials (loaded from environment variables)
+telegram:
+  # Token from @BotFather (set TELEGRAM_BOT_TOKEN env var)
+  bot_token: ${TELEGRAM_BOT_TOKEN}
+
+  # Your chat ID (get from @userinfobot, set TELEGRAM_CHAT_ID env var)
+  chat_id: ${TELEGRAM_CHAT_ID}
+
+  # Bot username (for mentions)
+  bot_username: "AlbatrossSurplusBot"
+
+# Notification Settings
+notifications:
+  # Morning briefing with top opportunities
+  morning_briefing:
+    enabled: true
+    max_items: 5
+    min_roi: 80  # Only show items with ROI >= 80%
+
+  # Immediate alerts for strong opportunities
+  strong_opportunities:
+    enabled: true
+    min_roi: 100  # ROI threshold for immediate alert
+
+  # Auction ending reminders
+  auction_endings:
+    enabled: true
+    first_reminder_hours: 24  # Hours before auction ends
+    final_reminder_minutes: 15  # Minutes before auction ends
+
+  # Bid result notifications
+  bid_results:
+    enabled: true
+    notify_win: true
+    notify_loss: true
+
+  # Weekly profit summary
+  weekly_summary:
+    enabled: true
+    day: 0  # Sunday
+    hour: 18  # 6 PM
+
+  # Maximum alerts per day (prevent spam)
+  max_daily_alerts: 15
+
+# Schedule (cron format comments for reference)
+schedule:
+  # Morning briefing: Mon/Wed at 6:05 AM Mountain Time
+  morning_briefing:
+    days: [0, 2]  # 0=Monday, 2=Wednesday
+    hour: 6
+    minute: 5
+    timezone: "America/Edmonton"
+    # Cron: 5 6 * * 1,3
+
+  # Weekly summary: Sunday at 6 PM
+  weekly_summary:
+    day: 6  # Sunday
+    hour: 18
+    minute: 0
+    timezone: "America/Edmonton"
+    # Cron: 0 18 * * 0
+
+# Alert Thresholds
+thresholds:
+  # ROI levels for categorization
+  strong_roi: 200  # Percent - immediate alert
+  good_roi: 100    # Percent - include in briefing
+  marginal_roi: 50 # Percent - log only
+
+  # Auction timing
+  ending_soon_hours: 2  # Hours - "ending soon" label
+  urgent_minutes: 30    # Minutes - urgent alert
+
+  # Profit minimums
+  min_profit: 15  # Dollars - minimum to consider
+  min_ebay_price: 30  # Dollars - minimum market value
+
+# Command Aliases (shortcuts)
+command_aliases:
+  s: scanner
+  st: status
+  p: profit
+  b: bid
+  t: track
+  h: history
+
+# Message Templates
+templates:
+  # Emoji mapping
+  emoji:
+    strong: "🔥"
+    good: "✅"
+    marginal: "⚪"
+    pass: "❌"
+    warning: "⚠️"
+    money: "💰"
+    time: "⏰"
+    package: "📦"
+    chart: "📊"
+    target: "🎯"
+
+  # Time format
+  date_format: "%b %d"
+  time_format: "%I:%M %p"
+  datetime_format: "%b %d %I:%M %p"
+
+# Budget Defaults
+budget:
+  default_weekly: 500  # Default weekly spending limit
+  default_max_single: 100  # Default max per item
+  warning_threshold: 0.8  # Warn when 80% of budget spent
+
+# Database Settings
+database:
+  # SQLite database for bid tracking
+  path: "~/albatross/data/surplus_bids.db"
+
+  # Backup settings
+  backup_enabled: true
+  backup_interval_days: 7
+
+# Web Dashboard Integration
+web_dashboard:
+  enabled: true
+  host: "0.0.0.0"
+  port: 5000
+  # Access URL (when on same network)
+  local_url: "http://192.168.1.67:5000"
+
+# Logging
+logging:
+  level: "INFO"
+  file: "~/albatross/logs/telegram_bot.log"
+  max_size_mb: 10
+  backup_count: 3
+
+# Rate Limiting
+rate_limits:
+  # Commands per minute per user
+  commands_per_minute: 20
+
+  # Scanner runs per hour
+  scans_per_hour: 4
+
+  # API calls (Apify, eBay research)
+  research_per_day: 50
+
+# Security
+security:
+  # Only respond to authorized chat IDs
+  authorized_chats_only: true
+
+  # Log all commands
+  audit_logging: true
+
+  # Sensitive data handling
+  mask_prices_in_logs: false
